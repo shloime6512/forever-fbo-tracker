@@ -199,11 +199,36 @@
         <div class="panel"><div class="filters"><input id="reportMonth" type="month"><select id="reportScope"><option value="month">Selected month</option><option value="all">All time</option></select></div><div class="metrics" id="reportCards"></div></div>
         <div class="split" style="margin-top:14px"><div class="panel"><h2>Top Products</h2><div class="list" id="topProducts"></div></div><div class="panel"><h2>Open Balances</h2><div class="list" id="balances"></div></div></div>
       </section>
+      <section id="sync" class="section">
+        <div class="panel">
+          <h2>Cloud Sync</h2>
+          <form id="syncForm">
+            <label>Google Script URL
+              <input id="syncUrl" placeholder="https://script.google.com/macros/s/.../exec">
+            </label>
+            <label>Secret code
+              <input id="syncSecret" type="password" placeholder="The private code from Apps Script">
+            </label>
+            <div class="row-actions">
+              <button class="primary" type="submit">Save Sync Settings</button>
+              <button type="button" id="cloudLoadBtn">Load from Cloud</button>
+              <button type="button" id="cloudSaveBtn">Save to Cloud</button>
+            </div>
+          </form>
+          <div class="list" style="margin-top:14px">
+            <div class="list-row">
+              <div><b>Status</b><small id="syncStatus">Not connected yet.</small></div>
+              <span class="badge" id="syncBadge">Sync</span>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
   </div>
   <div class="toast" id="toast"></div>
   <script>
     const key = "foreverFboTracker.v3";
+    const syncKey = "foreverFboTracker.sync.v1";
     const money = n => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
     const today = () => new Date().toISOString().slice(0, 10);
     const month = () => new Date().toISOString().slice(0, 7);
@@ -211,10 +236,13 @@
     const num = n => Number(n || 0);
     const clean = s => String(s || "").trim().toLowerCase();
     const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
-    const tabs = [["dashboard","Dashboard"],["inventory","Inventory"],["sales","Sales"],["expenses","Expenses"],["customers","Customers"],["reports","Reports"]];
+    const tabs = [["dashboard","Dashboard"],["inventory","Inventory"],["sales","Sales"],["expenses","Expenses"],["customers","Customers"],["reports","Reports"],["sync","Sync"]];
     let state = load();
+    let syncSettings = loadSyncSettings();
     function load() { try { const saved = JSON.parse(localStorage.getItem(key)); if (saved && Array.isArray(saved.products)) return saved; } catch {} return { products: [], sales: [], expenses: [], tab: "dashboard" }; }
     function save() { localStorage.setItem(key, JSON.stringify(state)); }
+    function loadSyncSettings() { try { return JSON.parse(localStorage.getItem(syncKey)) || {}; } catch { return {}; } }
+    function saveSyncSettings() { localStorage.setItem(syncKey, JSON.stringify(syncSettings)); }
     function toast(text) { const el = document.getElementById("toast"); el.textContent = text; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 2200); }
     function product(id) { return state.products.find(p => p.id === id); }
     function total(s) { return num(s.qty) * num(s.price); }
@@ -230,6 +258,7 @@
       productForm.addEventListener("submit", saveProduct); saleForm.addEventListener("submit", saveSale); expenseForm.addEventListener("submit", saveExpense);
       clearProduct.onclick = resetProduct; clearSale.onclick = resetSale; clearExpense.onclick = resetExpense; saleProduct.onchange = fillSalePrice;
       backupBtn.onclick = exportBackup; csvBtn.onclick = exportCsv; importBtn.onclick = () => importFile.click(); importFile.onchange = importBackup;
+      syncForm.addEventListener("submit", saveSyncForm); cloudLoadBtn.onclick = loadFromCloud; cloudSaveBtn.onclick = saveToCloud;
       resetBtn.onclick = () => { if (confirm("Clear all tracker data saved in this browser?")) { state = { products: [], sales: [], expenses: [], tab: "dashboard" }; save(); resetProduct(); resetSale(); resetExpense(); setTab("dashboard"); toast("Reset complete"); } };
     }
     function saveProduct(e) { e.preventDefault(); const p = { id: productId.value || id(), name: productName.value.trim(), code: productCode.value.trim(), category: productCategory.value.trim(), qty: num(productQty.value), reorder: num(productReorder.value), cost: num(productCost.value), price: num(productPrice.value), expiry: productExpiry.value, source: productSource.value.trim(), notes: productNotes.value.trim() }; const old = product(p.id); old ? Object.assign(old, p) : state.products.push(p); save(); resetProduct(); render(); toast("Product saved"); }
@@ -245,8 +274,8 @@
     function editExpense(eid) { const x = state.expenses.find(e => e.id === eid); if (!x) return; expenseId.value = x.id; expenseDate.value = x.date; expenseCategory.value = x.category; expenseDescription.value = x.description; expenseAmount.value = x.amount; expensePayment.value = x.payment; expenseNotes.value = x.notes; expenseFormTitle.textContent = "Edit Expense"; setTab("expenses"); }
     function deleteExpense(eid) { if (confirm("Delete this expense?")) { state.expenses = state.expenses.filter(e => e.id !== eid); save(); render(); } }
     function resetExpense() { expenseForm.reset(); expenseId.value = ""; expenseDate.value = today(); expenseFormTitle.textContent = "Add Expense"; }
-    function render() { renderCounts(); renderMetrics(); renderDashboard(); renderProducts(); renderProductOptions(); renderSales(); renderExpenses(); renderCustomers(); renderReports(); }
-    function renderCounts() { dashboardCount.textContent = state.products.filter(p => status(p)[0] !== "OK").length + state.sales.filter(s => balance(s) > 0).length; inventoryCount.textContent = state.products.length; salesCount.textContent = state.sales.length; expensesCount.textContent = state.expenses.length; customersCount.textContent = customers().length; reportsCount.textContent = money(totalProfit() - totalExpenses()); }
+    function render() { renderCounts(); renderMetrics(); renderDashboard(); renderProducts(); renderProductOptions(); renderSales(); renderExpenses(); renderCustomers(); renderReports(); renderSync(); }
+    function renderCounts() { dashboardCount.textContent = state.products.filter(p => status(p)[0] !== "OK").length + state.sales.filter(s => balance(s) > 0).length; inventoryCount.textContent = state.products.length; salesCount.textContent = state.sales.length; expensesCount.textContent = state.expenses.length; customersCount.textContent = customers().length; reportsCount.textContent = money(totalProfit() - totalExpenses()); syncCount.textContent = syncSettings.url ? "on" : "off"; }
     function renderMetrics() { metrics.innerHTML = [["Inventory Value", money(state.products.reduce((a,p) => a + num(p.qty) * num(p.cost), 0))],["Total Sales", money(totalSales())],["Net Profit", money(totalProfit() - totalExpenses())],["Open Balance", money(state.sales.reduce((a,s) => a + balance(s), 0))]].map(c => `<div class="metric"><span>${c[0]}</span><b>${c[1]}</b></div>`).join(""); }
     function renderDashboard() { const alerts = []; state.products.forEach(p => { const st = status(p); if (st[0] !== "OK") alerts.push(row(p.name, `${p.qty} on hand. Reorder at ${p.reorder || 0}. Expiry ${p.expiry || "not set"}.`, st[0], st[1])); }); state.sales.filter(s => balance(s) > 0).forEach(s => alerts.push(row(s.customer, `${s.productName} on ${s.date}`, money(balance(s)), "warn"))); attention.innerHTML = alerts.join("") || `<div class="empty">Nothing needs attention.</div>`; const acts = [...state.sales.map(s => ({ d: s.date, html: row(`${s.customer} bought ${s.productName}`, `${s.type === "direct" ? "Direct Forever order" : "From my stock"} - ${money(total(s))}`, s.payment, balance(s) ? "warn" : "good") })), ...state.expenses.map(e => ({ d: e.date, html: row(e.description, `${e.category} - ${money(e.amount)}`, "expense", "bad") }))].sort((a,b) => b.d.localeCompare(a.d)).slice(0, 8); activity.innerHTML = acts.map(a => a.html).join("") || `<div class="empty">No sales or expenses yet.</div>`; }
     function renderProducts() { const q = clean(productSearch.value), f = productFilter.value; const rows = state.products.filter(p => (!q || clean(`${p.name} ${p.code} ${p.category}`).includes(q)) && (f === "all" || status(p)[0].toLowerCase().startsWith(f))).sort((a,b) => a.name.localeCompare(b.name)); productRows.innerHTML = rows.map(p => { const st = status(p); return `<tr><td><b>${esc(p.name)}</b><br>${esc(p.category)}</td><td>${esc(p.code)}</td><td>${p.qty}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td>${esc(p.expiry)}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td class="actions"><button onclick="editProduct('${p.id}')">Edit</button> <button onclick="deleteProduct('${p.id}')">Delete</button></td></tr>`; }).join("") || `<tr><td colspan="8"><div class="empty">No inventory yet.</div></td></tr>`; }
@@ -264,6 +293,13 @@
     function csv(rows) { return rows.map(r => r.map(c => `"${String(c ?? "").replaceAll('"','""')}"`).join(",")).join("\n"); }
     function exportCsv() { const rows = [["Products"],["Name","Code","Category","Qty","Cost","Price","Expiry","Reorder"],...state.products.map(p=>[p.name,p.code,p.category,p.qty,p.cost,p.price,p.expiry,p.reorder]),[],["Sales"],["Date","Customer","Product","Type","Qty","Unit Price","Total","Profit","Paid","Balance","Payment"],...state.sales.map(s=>[s.date,s.customer,s.productName,s.type,s.qty,s.price,total(s),profit(s),s.paid,balance(s),s.payment]),[],["Expenses"],["Date","Category","Description","Amount","Payment"],...state.expenses.map(e=>[e.date,e.category,e.description,e.amount,e.payment])]; download(`forever-fbo-export-${today()}.csv`, csv(rows), "text/csv"); }
     function importBackup(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const data = JSON.parse(reader.result); if (!Array.isArray(data.products) || !Array.isArray(data.sales) || !Array.isArray(data.expenses)) throw new Error(); if (confirm("Importing replaces the data currently saved in this browser.")) { state = data; state.tab ||= "dashboard"; save(); setTab(state.tab); toast("Imported"); } } catch { toast("Could not import backup"); } }; reader.readAsText(file); e.target.value = ""; }
+    function renderSync() { syncUrl.value = syncSettings.url || "https://script.google.com/macros/s/AKfycbzv8VzHGsQalGqCiCAAUaweo80yZ4OuPFbXOG94HObkm0MaK2UfsbsnWFvZfB-OvF26EA/exec"; syncSecret.value = syncSettings.secret || ""; syncStatus.textContent = syncSettings.url ? "Ready. Use Save to Cloud on the device with newest data, then Load from Cloud on the other device." : "Paste your Google Script URL and secret code, then save settings."; syncBadge.textContent = syncSettings.url ? "Ready" : "Setup"; syncBadge.className = `badge ${syncSettings.url ? "good" : "warn"}`; }
+    function saveSyncForm(e) { e.preventDefault(); syncSettings = { url: syncUrl.value.trim(), secret: syncSecret.value.trim(), savedAt: new Date().toISOString() }; saveSyncSettings(); render(); toast("Sync settings saved"); }
+    function cloudPayload() { return { products: state.products || [], sales: state.sales || [], expenses: state.expenses || [], tab: state.tab || "dashboard" }; }
+    function requireSyncSettings() { if (!syncUrl.value.trim() || !syncSecret.value.trim()) { toast("Add URL and secret first"); setTab("sync"); return false; } syncSettings = { url: syncUrl.value.trim(), secret: syncSecret.value.trim(), savedAt: new Date().toISOString() }; saveSyncSettings(); return true; }
+    async function saveToCloud() { if (!requireSyncSettings()) return; try { await fetch(syncSettings.url, { method: "POST", mode: "no-cors", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify({ action: "save", secret: syncSettings.secret, data: cloudPayload() }) }); syncStatus.textContent = "Sent to cloud. Use Load from Cloud on the other device."; syncBadge.textContent = "Saved"; syncBadge.className = "badge good"; toast("Sent to cloud"); } catch (error) { syncStatus.textContent = "Cloud save failed. Check the URL and redeploy Apps Script."; syncBadge.textContent = "Error"; syncBadge.className = "badge bad"; toast("Cloud save failed"); } }
+    function loadJsonp(url) { return new Promise((resolve, reject) => { const callback = "__fboSync" + Date.now() + Math.random().toString(36).slice(2); const script = document.createElement("script"); const cleanup = () => { delete window[callback]; script.remove(); }; window[callback] = data => { cleanup(); resolve(data); }; script.onerror = () => { cleanup(); reject(new Error("Cloud load failed")); }; script.src = `${url}${url.includes("?") ? "&" : "?"}action=load&secret=${encodeURIComponent(syncSettings.secret)}&callback=${callback}`; document.body.appendChild(script); setTimeout(() => { if (window[callback]) { cleanup(); reject(new Error("Cloud load timed out")); } }, 15000); }); }
+    async function loadFromCloud() { if (!requireSyncSettings()) return; try { const result = await loadJsonp(syncSettings.url); if (!result || !result.ok || !result.data) throw new Error("Bad cloud data"); if (!Array.isArray(result.data.products) || !Array.isArray(result.data.sales) || !Array.isArray(result.data.expenses)) throw new Error("Bad cloud data"); if (!confirm("Load cloud data onto this device? This replaces the data currently saved in this browser.")) return; state = result.data; state.tab ||= "dashboard"; save(); setTab(state.tab); syncStatus.textContent = `Loaded from cloud${state.updatedAt ? " - " + state.updatedAt : ""}.`; syncBadge.textContent = "Loaded"; syncBadge.className = "badge good"; toast("Loaded from cloud"); } catch (error) { syncStatus.textContent = "Cloud load failed. Make sure Apps Script has the updated JSONP code and is redeployed."; syncBadge.textContent = "Error"; syncBadge.className = "badge bad"; toast("Cloud load failed"); } }
     window.editProduct = editProduct; window.deleteProduct = deleteProduct; window.editSale = editSale; window.deleteSale = deleteSale; window.editExpense = editExpense; window.deleteExpense = deleteExpense;
     initTabs(); bind(); resetProduct(); resetSale(); resetExpense(); reportMonth.value = month(); setTab(state.tab || "dashboard");
   </script>
