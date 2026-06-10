@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forever FBO Tracker</title>
+  <style>
+    :root {
+      --bg: #eef4f0;
+      --card: #fff;
+      --ink: #17211c;
+      --muted: #5d6b62;
+      --line: #d7e0da;
+      --green: #0d7f55;
+      --red: #bd3030;
+      --warn: #fff2d7;
+      --bad: #ffe3e3;
+      --good: #ddf5e8;
+      font-family: Arial, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); }
+    button, input, select, textarea { font: inherit; border-radius: 8px; }
+    button { min-height: 42px; border: 1px solid var(--line); background: #fff; padding: 0 12px; cursor: pointer; }
+    button.primary { background: var(--green); border-color: var(--green); color: #fff; }
+    button.danger { background: var(--red); border-color: var(--red); color: #fff; }
+    input, select, textarea { width: 100%; min-height: 42px; border: 1px solid var(--line); padding: 9px 10px; background: #fff; }
+    textarea { min-height: 76px; resize: vertical; }
+    .app { display: grid; grid-template-columns: 220px minmax(0, 1fr); min-height: 100vh; }
+    aside { position: sticky; top: 0; height: 100vh; padding: 18px 14px; background: #fbfdfb; border-right: 1px solid var(--line); }
+    .brand { margin-bottom: 18px; }
+    .brand b { display: block; font-size: 20px; line-height: 1.1; }
+    .brand span { color: var(--muted); font-size: 14px; }
+    nav { display: grid; gap: 6px; }
+    .tab { display: flex; align-items: center; justify-content: space-between; width: 100%; border-color: transparent; background: transparent; color: var(--muted); text-align: left; }
+    .tab.active { background: var(--green); color: #fff; }
+    .count { padding: 2px 8px; border-radius: 20px; background: rgba(255,255,255,.22); font-size: 12px; }
+    main { min-width: 0; padding: 18px clamp(10px, 3vw, 34px) 34px; }
+    .top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    h1 { margin: 0; font-size: clamp(26px, 4vw, 38px); }
+    h2 { margin: 0 0 12px; font-size: 19px; }
+    .tools { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+    .mobile-nav { display: none; position: sticky; top: 0; z-index: 10; padding: 10px; background: #fbfdfb; border-bottom: 1px solid var(--line); }
+    .section { display: none; }
+    .section.active { display: block; }
+    .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 14px; }
+    .metric, .panel, .form, .table-wrap { background: var(--card); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 25px rgba(18,37,27,.08); }
+    .metric { min-height: 100px; padding: 14px; display: grid; align-content: space-between; }
+    .metric span { color: var(--muted); font-size: 14px; }
+    .metric b { font-size: 27px; overflow-wrap: anywhere; }
+    .split { display: grid; grid-template-columns: minmax(0, 1fr) 360px; gap: 14px; align-items: start; }
+    .panel, .form { padding: 16px; }
+    .filters { display: flex; gap: 8px; margin-bottom: 10px; }
+    .filters input { flex: 1; }
+    .table-wrap { overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; font-size: 14px; }
+    th { background: #f8fbf9; color: #46574e; font-size: 12px; text-transform: uppercase; }
+    td.actions { white-space: nowrap; }
+    td.actions button { min-height: 34px; padding: 0 9px; }
+    form { display: grid; gap: 11px; }
+    .fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    label { display: grid; gap: 5px; color: #314239; font-weight: 700; font-size: 13px; }
+    .wide { grid-column: 1 / -1; }
+    .row-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+    .badge { display: inline-flex; min-height: 26px; align-items: center; padding: 3px 9px; border-radius: 20px; background: #edf3ef; font-size: 12px; white-space: nowrap; }
+    .warn { background: var(--warn); color: #755000; }
+    .bad { background: var(--bad); color: #8c1f1f; }
+    .good { background: var(--good); color: #0b6239; }
+    .list { display: grid; gap: 8px; }
+    .list-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+    .list-row:last-child { border-bottom: 0; }
+    .list-row small { color: var(--muted); display: block; margin-top: 2px; }
+    .empty { padding: 18px; color: var(--muted); text-align: center; }
+    .file { display: none; }
+    .toast { position: fixed; right: 14px; bottom: 14px; max-width: calc(100vw - 28px); padding: 12px 14px; border-radius: 8px; background: #173d2d; color: #fff; opacity: 0; transform: translateY(80px); transition: .18s; z-index: 20; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 1050px) { .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); } .split { grid-template-columns: 1fr; } }
+    @media (max-width: 760px) {
+      .app { display: block; }
+      aside { display: none; }
+      .mobile-nav { display: block; }
+      main { padding: 12px 10px 28px; }
+      .top { display: block; }
+      .tools { display: grid; grid-template-columns: 1fr; margin-top: 12px; }
+      .metrics, .fields { grid-template-columns: 1fr; }
+      .filters { display: grid; }
+      table { min-width: 700px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="mobile-nav"><select id="mobileTab"></select></div>
+  <div class="app">
+    <aside>
+      <div class="brand"><b>Forever FBO Tracker</b><span>Inventory, sales, customers, expenses</span></div>
+      <nav id="tabs"></nav>
+    </aside>
+    <main>
+      <div class="top">
+        <h1 id="title">Dashboard</h1>
+        <div class="tools">
+          <button id="backupBtn">Export Backup</button>
+          <button id="csvBtn">Export CSV</button>
+          <button id="importBtn">Import</button>
+          <button class="danger" id="resetBtn">Reset</button>
+          <input class="file" id="importFile" type="file" accept=".json,application/json">
+        </div>
+      </div>
+      <section id="dashboard" class="section active">
+        <div class="metrics" id="metrics"></div>
+        <div class="split">
+          <div class="panel"><h2>Attention</h2><div class="list" id="attention"></div></div>
+          <div class="panel"><h2>Recent Activity</h2><div class="list" id="activity"></div></div>
+        </div>
+      </section>
+      <section id="inventory" class="section">
+        <div class="split">
+          <div>
+            <div class="filters"><input id="productSearch" placeholder="Search inventory"><select id="productFilter"><option value="all">All</option><option value="low">Low stock</option><option value="expiring">Expiring soon</option><option value="expired">Expired</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>Product</th><th>Code</th><th>Qty</th><th>Cost</th><th>Price</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead><tbody id="productRows"></tbody></table></div>
+          </div>
+          <div class="form">
+            <h2 id="productFormTitle">Add Product</h2>
+            <form id="productForm">
+              <input id="productId" type="hidden">
+              <div class="fields">
+                <label class="wide">Product name<input id="productName" required></label>
+                <label>Code<input id="productCode"></label>
+                <label>Category<input id="productCategory"></label>
+                <label>Quantity<input id="productQty" type="number" min="0" step="1" required></label>
+                <label>Reorder level<input id="productReorder" type="number" min="0" step="1"></label>
+                <label>Cost<input id="productCost" type="number" min="0" step="0.01"></label>
+                <label>Selling price<input id="productPrice" type="number" min="0" step="0.01"></label>
+                <label>Expiry date<input id="productExpiry" type="date"></label>
+                <label>Source<input id="productSource" value="Forever Living"></label>
+                <label class="wide">Notes<textarea id="productNotes"></textarea></label>
+              </div>
+              <div class="row-actions"><button class="primary">Save Product</button><button type="button" id="clearProduct">Clear</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section id="sales" class="section">
+        <div class="split">
+          <div>
+            <div class="filters"><input id="saleSearch" placeholder="Search sales"><select id="saleFilter"><option value="all">All</option><option value="unpaid">Unpaid</option><option value="stock">From my stock</option><option value="direct">Direct Forever order</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Customer</th><th>Product</th><th>Type</th><th>Qty</th><th>Total</th><th>Profit</th><th>Status</th><th>Actions</th></tr></thead><tbody id="saleRows"></tbody></table></div>
+          </div>
+          <div class="form">
+            <h2 id="saleFormTitle">Add Sale</h2>
+            <form id="saleForm">
+              <input id="saleId" type="hidden">
+              <div class="fields">
+                <label>Date<input id="saleDate" type="date" required></label>
+                <label>Type<select id="saleType"><option value="stock">From my stock</option><option value="direct">Direct Forever order</option></select></label>
+                <label class="wide">Customer<input id="saleCustomer" required></label>
+                <label class="wide">Product<select id="saleProduct"></select></label>
+                <label>Quantity<input id="saleQty" type="number" min="1" step="1" value="1" required></label>
+                <label>Unit price<input id="salePrice" type="number" min="0" step="0.01"></label>
+                <label>Payment<select id="salePayment"><option value="paid">Paid</option><option value="unpaid">Unpaid</option><option value="partial">Partial</option></select></label>
+                <label>Delivery<select id="saleDelivery"><option value="delivered">Delivered</option><option value="pickup">Pickup</option><option value="shipping">Shipping</option><option value="pending">Pending</option></select></label>
+                <label>Amount paid<input id="salePaid" type="number" min="0" step="0.01"></label>
+                <label>Profit override<input id="saleProfitOverride" type="number" min="0" step="0.01"></label>
+                <label class="wide">Notes<textarea id="saleNotes"></textarea></label>
+              </div>
+              <div class="row-actions"><button class="primary">Save Sale</button><button type="button" id="clearSale">Clear</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section id="expenses" class="section">
+        <div class="split">
+          <div>
+            <div class="filters"><input id="expenseSearch" placeholder="Search expenses"><select id="expenseFilter"><option value="all">All</option><option>shipping</option><option>samples</option><option>ads</option><option>events</option><option>fees</option><option>supplies</option><option>other</option></select></div>
+            <div class="table-wrap"><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Payment</th><th>Actions</th></tr></thead><tbody id="expenseRows"></tbody></table></div>
+          </div>
+          <div class="form">
+            <h2 id="expenseFormTitle">Add Expense</h2>
+            <form id="expenseForm">
+              <input id="expenseId" type="hidden">
+              <div class="fields">
+                <label>Date<input id="expenseDate" type="date" required></label>
+                <label>Category<select id="expenseCategory"><option>shipping</option><option>samples</option><option>ads</option><option>events</option><option>fees</option><option>supplies</option><option>other</option></select></label>
+                <label class="wide">Description<input id="expenseDescription" required></label>
+                <label>Amount<input id="expenseAmount" type="number" min="0" step="0.01" required></label>
+                <label>Payment<input id="expensePayment"></label>
+                <label class="wide">Notes<textarea id="expenseNotes"></textarea></label>
+              </div>
+              <div class="row-actions"><button class="primary">Save Expense</button><button type="button" id="clearExpense">Clear</button></div>
+            </form>
+          </div>
+        </div>
+      </section>
+      <section id="customers" class="section">
+        <div class="panel"><div class="filters"><input id="customerSearch" placeholder="Search customers"></div><div class="table-wrap"><table><thead><tr><th>Customer</th><th>Purchases</th><th>Total spent</th><th>Balance</th><th>Last purchase</th><th>Favorite products</th></tr></thead><tbody id="customerRows"></tbody></table></div></div>
+      </section>
+      <section id="reports" class="section">
+        <div class="panel"><div class="filters"><input id="reportMonth" type="month"><select id="reportScope"><option value="month">Selected month</option><option value="all">All time</option></select></div><div class="metrics" id="reportCards"></div></div>
+        <div class="split" style="margin-top:14px"><div class="panel"><h2>Top Products</h2><div class="list" id="topProducts"></div></div><div class="panel"><h2>Open Balances</h2><div class="list" id="balances"></div></div></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script>
+    const key = "foreverFboTracker.v3";
+    const money = n => new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(Number(n || 0));
+    const today = () => new Date().toISOString().slice(0, 10);
+    const month = () => new Date().toISOString().slice(0, 7);
+    const id = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+    const num = n => Number(n || 0);
+    const clean = s => String(s || "").trim().toLowerCase();
+    const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+    const tabs = [["dashboard","Dashboard"],["inventory","Inventory"],["sales","Sales"],["expenses","Expenses"],["customers","Customers"],["reports","Reports"]];
+    let state = load();
+    function load() { try { const saved = JSON.parse(localStorage.getItem(key)); if (saved && Array.isArray(saved.products)) return saved; } catch {} return { products: [], sales: [], expenses: [], tab: "dashboard" }; }
+    function save() { localStorage.setItem(key, JSON.stringify(state)); }
+    function toast(text) { const el = document.getElementById("toast"); el.textContent = text; el.classList.add("show"); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 2200); }
+    function product(id) { return state.products.find(p => p.id === id); }
+    function total(s) { return num(s.qty) * num(s.price); }
+    function balance(s) { return Math.max(0, total(s) - num(s.paid)); }
+    function profit(s) { if (s.profitOverride !== "" && s.profitOverride !== undefined) return num(s.profitOverride); if (s.type === "direct") return 0; const p = product(s.productId); return (num(s.price) - num(p?.cost)) * num(s.qty); }
+    function status(p) { const expiry = p.expiry ? Math.round((new Date(p.expiry) - new Date(today())) / 86400000) : 99999; if (p.expiry && expiry < 0) return ["Expired", "bad"]; if (num(p.reorder) && num(p.qty) <= num(p.reorder)) return ["Low stock", "warn"]; if (p.expiry && expiry <= 60) return ["Expiring", "warn"]; return ["OK", "good"]; }
+    function row(title, detail, badge, tone = "") { return `<div class="list-row"><div><b>${esc(title)}</b><small>${esc(detail)}</small></div><span class="badge ${tone}">${esc(badge)}</span></div>`; }
+    function setTab(name) { state.tab = name; save(); document.querySelectorAll(".section").forEach(s => s.classList.toggle("active", s.id === name)); document.querySelectorAll(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name)); mobileTab.value = name; title.textContent = tabs.find(t => t[0] === name)[1]; render(); }
+    function initTabs() { tabs.forEach(([name, label]) => { tabsEl.insertAdjacentHTML("beforeend", `<button class="tab" data-tab="${name}"><span>${label}</span><span class="count" id="${name}Count">0</span></button>`); mobileTab.insertAdjacentHTML("beforeend", `<option value="${name}">${label}</option>`); }); tabsEl.addEventListener("click", e => { const b = e.target.closest("button"); if (b) setTab(b.dataset.tab); }); mobileTab.addEventListener("change", e => setTab(e.target.value)); }
+    const tabsEl = document.getElementById("tabs");
+    function bind() {
+      ["productSearch","productFilter","saleSearch","saleFilter","expenseSearch","expenseFilter","customerSearch","reportMonth","reportScope"].forEach(x => document.getElementById(x).addEventListener("input", render));
+      productForm.addEventListener("submit", saveProduct); saleForm.addEventListener("submit", saveSale); expenseForm.addEventListener("submit", saveExpense);
+      clearProduct.onclick = resetProduct; clearSale.onclick = resetSale; clearExpense.onclick = resetExpense; saleProduct.onchange = fillSalePrice;
+      backupBtn.onclick = exportBackup; csvBtn.onclick = exportCsv; importBtn.onclick = () => importFile.click(); importFile.onchange = importBackup;
+      resetBtn.onclick = () => { if (confirm("Clear all tracker data saved in this browser?")) { state = { products: [], sales: [], expenses: [], tab: "dashboard" }; save(); resetProduct(); resetSale(); resetExpense(); setTab("dashboard"); toast("Reset complete"); } };
+    }
+    function saveProduct(e) { e.preventDefault(); const p = { id: productId.value || id(), name: productName.value.trim(), code: productCode.value.trim(), category: productCategory.value.trim(), qty: num(productQty.value), reorder: num(productReorder.value), cost: num(productCost.value), price: num(productPrice.value), expiry: productExpiry.value, source: productSource.value.trim(), notes: productNotes.value.trim() }; const old = product(p.id); old ? Object.assign(old, p) : state.products.push(p); save(); resetProduct(); render(); toast("Product saved"); }
+    function editProduct(pid) { const p = product(pid); if (!p) return; productId.value = p.id; productName.value = p.name; productCode.value = p.code; productCategory.value = p.category; productQty.value = p.qty; productReorder.value = p.reorder; productCost.value = p.cost; productPrice.value = p.price; productExpiry.value = p.expiry; productSource.value = p.source; productNotes.value = p.notes; productFormTitle.textContent = "Edit Product"; setTab("inventory"); }
+    function deleteProduct(pid) { if (state.sales.some(s => s.productId === pid)) return toast("Product has sales history"); if (confirm("Delete this product?")) { state.products = state.products.filter(p => p.id !== pid); save(); render(); } }
+    function resetProduct() { productForm.reset(); productId.value = ""; productSource.value = "Forever Living"; productFormTitle.textContent = "Add Product"; }
+    function saveSale(e) { e.preventDefault(); const old = state.sales.find(s => s.id === saleId.value); if (old && old.type === "stock") { const oldP = product(old.productId); if (oldP) oldP.qty += num(old.qty); } const p = product(saleProduct.value); if (!p) return toast("Add a product first"); const qty = num(saleQty.value); const type = saleType.value; if (type === "stock" && num(p.qty) < qty) { if (old && old.type === "stock") { const oldP = product(old.productId); if (oldP) oldP.qty -= num(old.qty); } return toast("Not enough stock"); } if (type === "stock") p.qty -= qty; const price = num(salePrice.value || p.price); const paid = salePaid.value === "" ? (salePayment.value === "paid" ? price * qty : 0) : num(salePaid.value); const s = { id: saleId.value || id(), date: saleDate.value, type, customer: saleCustomer.value.trim(), productId: p.id, productName: p.name, qty, price, payment: salePayment.value, delivery: saleDelivery.value, paid, profitOverride: saleProfitOverride.value === "" ? "" : num(saleProfitOverride.value), notes: saleNotes.value.trim() }; old ? Object.assign(old, s) : state.sales.push(s); save(); resetSale(); render(); toast("Sale saved"); }
+    function editSale(sid) { const s = state.sales.find(x => x.id === sid); if (!s) return; saleId.value = s.id; saleDate.value = s.date; saleType.value = s.type; saleCustomer.value = s.customer; renderProductOptions(); saleProduct.value = s.productId; saleQty.value = s.qty; salePrice.value = s.price; salePayment.value = s.payment; saleDelivery.value = s.delivery; salePaid.value = s.paid; saleProfitOverride.value = s.profitOverride; saleNotes.value = s.notes; saleFormTitle.textContent = "Edit Sale"; setTab("sales"); }
+    function deleteSale(sid) { const s = state.sales.find(x => x.id === sid); if (!s) return; if (confirm("Delete this sale?")) { if (s.type === "stock") { const p = product(s.productId); if (p) p.qty += num(s.qty); } state.sales = state.sales.filter(x => x.id !== sid); save(); render(); } }
+    function resetSale() { saleForm.reset(); saleId.value = ""; saleDate.value = today(); saleQty.value = 1; saleFormTitle.textContent = "Add Sale"; renderProductOptions(); fillSalePrice(); }
+    function fillSalePrice() { const p = product(saleProduct.value); if (p && !saleId.value) salePrice.value = p.price || ""; }
+    function saveExpense(e) { e.preventDefault(); const x = { id: expenseId.value || id(), date: expenseDate.value, category: expenseCategory.value, description: expenseDescription.value.trim(), amount: num(expenseAmount.value), payment: expensePayment.value.trim(), notes: expenseNotes.value.trim() }; const old = state.expenses.find(e => e.id === x.id); old ? Object.assign(old, x) : state.expenses.push(x); save(); resetExpense(); render(); toast("Expense saved"); }
+    function editExpense(eid) { const x = state.expenses.find(e => e.id === eid); if (!x) return; expenseId.value = x.id; expenseDate.value = x.date; expenseCategory.value = x.category; expenseDescription.value = x.description; expenseAmount.value = x.amount; expensePayment.value = x.payment; expenseNotes.value = x.notes; expenseFormTitle.textContent = "Edit Expense"; setTab("expenses"); }
+    function deleteExpense(eid) { if (confirm("Delete this expense?")) { state.expenses = state.expenses.filter(e => e.id !== eid); save(); render(); } }
+    function resetExpense() { expenseForm.reset(); expenseId.value = ""; expenseDate.value = today(); expenseFormTitle.textContent = "Add Expense"; }
+    function render() { renderCounts(); renderMetrics(); renderDashboard(); renderProducts(); renderProductOptions(); renderSales(); renderExpenses(); renderCustomers(); renderReports(); }
+    function renderCounts() { dashboardCount.textContent = state.products.filter(p => status(p)[0] !== "OK").length + state.sales.filter(s => balance(s) > 0).length; inventoryCount.textContent = state.products.length; salesCount.textContent = state.sales.length; expensesCount.textContent = state.expenses.length; customersCount.textContent = customers().length; reportsCount.textContent = money(totalProfit() - totalExpenses()); }
+    function renderMetrics() { metrics.innerHTML = [["Inventory Value", money(state.products.reduce((a,p) => a + num(p.qty) * num(p.cost), 0))],["Total Sales", money(totalSales())],["Net Profit", money(totalProfit() - totalExpenses())],["Open Balance", money(state.sales.reduce((a,s) => a + balance(s), 0))]].map(c => `<div class="metric"><span>${c[0]}</span><b>${c[1]}</b></div>`).join(""); }
+    function renderDashboard() { const alerts = []; state.products.forEach(p => { const st = status(p); if (st[0] !== "OK") alerts.push(row(p.name, `${p.qty} on hand. Reorder at ${p.reorder || 0}. Expiry ${p.expiry || "not set"}.`, st[0], st[1])); }); state.sales.filter(s => balance(s) > 0).forEach(s => alerts.push(row(s.customer, `${s.productName} on ${s.date}`, money(balance(s)), "warn"))); attention.innerHTML = alerts.join("") || `<div class="empty">Nothing needs attention.</div>`; const acts = [...state.sales.map(s => ({ d: s.date, html: row(`${s.customer} bought ${s.productName}`, `${s.type === "direct" ? "Direct Forever order" : "From my stock"} - ${money(total(s))}`, s.payment, balance(s) ? "warn" : "good") })), ...state.expenses.map(e => ({ d: e.date, html: row(e.description, `${e.category} - ${money(e.amount)}`, "expense", "bad") }))].sort((a,b) => b.d.localeCompare(a.d)).slice(0, 8); activity.innerHTML = acts.map(a => a.html).join("") || `<div class="empty">No sales or expenses yet.</div>`; }
+    function renderProducts() { const q = clean(productSearch.value), f = productFilter.value; const rows = state.products.filter(p => (!q || clean(`${p.name} ${p.code} ${p.category}`).includes(q)) && (f === "all" || status(p)[0].toLowerCase().startsWith(f))).sort((a,b) => a.name.localeCompare(b.name)); productRows.innerHTML = rows.map(p => { const st = status(p); return `<tr><td><b>${esc(p.name)}</b><br>${esc(p.category)}</td><td>${esc(p.code)}</td><td>${p.qty}</td><td>${money(p.cost)}</td><td>${money(p.price)}</td><td>${esc(p.expiry)}</td><td><span class="badge ${st[1]}">${st[0]}</span></td><td class="actions"><button onclick="editProduct('${p.id}')">Edit</button> <button onclick="deleteProduct('${p.id}')">Delete</button></td></tr>`; }).join("") || `<tr><td colspan="8"><div class="empty">No inventory yet.</div></td></tr>`; }
+    function renderProductOptions() { const current = saleProduct.value; saleProduct.innerHTML = state.products.map(p => `<option value="${p.id}">${esc(p.name)} (${p.qty} in stock)</option>`).join("") || `<option value="">Add inventory first</option>`; if (state.products.some(p => p.id === current)) saleProduct.value = current; }
+    function renderSales() { const q = clean(saleSearch.value), f = saleFilter.value; const rows = state.sales.filter(s => (!q || clean(`${s.customer} ${s.productName} ${s.type} ${s.payment}`).includes(q)) && (f === "all" || s.type === f || s.payment === f)).sort((a,b) => b.date.localeCompare(a.date)); saleRows.innerHTML = rows.map(s => `<tr><td>${esc(s.date)}</td><td>${esc(s.customer)}</td><td>${esc(s.productName)}</td><td>${s.type === "direct" ? "Direct" : "Stock"}</td><td>${s.qty}</td><td>${money(total(s))}</td><td>${money(profit(s))}</td><td><span class="badge ${balance(s) ? "warn" : "good"}">${esc(s.payment)} ${balance(s) ? money(balance(s)) : ""}</span></td><td class="actions"><button onclick="editSale('${s.id}')">Edit</button> <button onclick="deleteSale('${s.id}')">Delete</button></td></tr>`).join("") || `<tr><td colspan="9"><div class="empty">No sales yet.</div></td></tr>`; }
+    function renderExpenses() { const q = clean(expenseSearch.value), f = expenseFilter.value; const rows = state.expenses.filter(e => (!q || clean(`${e.description} ${e.category} ${e.payment}`).includes(q)) && (f === "all" || e.category === f)).sort((a,b) => b.date.localeCompare(a.date)); expenseRows.innerHTML = rows.map(e => `<tr><td>${esc(e.date)}</td><td>${esc(e.category)}</td><td>${esc(e.description)}</td><td>${money(e.amount)}</td><td>${esc(e.payment)}</td><td class="actions"><button onclick="editExpense('${e.id}')">Edit</button> <button onclick="deleteExpense('${e.id}')">Delete</button></td></tr>`).join("") || `<tr><td colspan="6"><div class="empty">No expenses yet.</div></td></tr>`; }
+    function customers() { const map = {}; state.sales.forEach(s => { const k = clean(s.customer); map[k] ||= { customer: s.customer, count: 0, spent: 0, balance: 0, last: s.date, products: {} }; map[k].count++; map[k].spent += total(s); map[k].balance += balance(s); map[k].last = map[k].last > s.date ? map[k].last : s.date; map[k].products[s.productName] = (map[k].products[s.productName] || 0) + num(s.qty); }); return Object.values(map).sort((a,b) => b.last.localeCompare(a.last)); }
+    function renderCustomers() { const q = clean(customerSearch.value); const rows = customers().filter(c => !q || clean(c.customer).includes(q)); customerRows.innerHTML = rows.map(c => `<tr><td>${esc(c.customer)}</td><td>${c.count}</td><td>${money(c.spent)}</td><td>${money(c.balance)}</td><td>${esc(c.last)}</td><td>${esc(Object.entries(c.products).sort((a,b)=>b[1]-a[1]).slice(0,3).map(([n,q]) => `${n} (${q})`).join(", "))}</td></tr>`).join("") || `<tr><td colspan="6"><div class="empty">No customer history yet.</div></td></tr>`; }
+    function renderReports() { reportMonth.value ||= month(); const scope = reportScope.value, m = reportMonth.value; const inScope = d => scope === "all" || String(d).startsWith(m); const sales = state.sales.filter(s => inScope(s.date)), expenses = state.expenses.filter(e => inScope(e.date)); const salesTotal = sales.reduce((a,s)=>a+total(s),0), gross = sales.reduce((a,s)=>a+profit(s),0), exp = expenses.reduce((a,e)=>a+num(e.amount),0); reportCards.innerHTML = [["Sales", money(salesTotal)],["Gross Profit", money(gross)],["Expenses", money(exp)],["Net Profit", money(gross-exp)],["Stock Sales", sales.filter(s=>s.type==="stock").length],["Direct Orders", sales.filter(s=>s.type==="direct").length]].map(c => `<div class="metric"><span>${c[0]}</span><b>${c[1]}</b></div>`).join(""); const top = {}; sales.forEach(s => { top[s.productName] ||= { qty: 0, total: 0 }; top[s.productName].qty += num(s.qty); top[s.productName].total += total(s); }); topProducts.innerHTML = Object.entries(top).sort((a,b)=>b[1].total-a[1].total).slice(0,8).map(([name,t]) => row(name, `${t.qty} sold`, money(t.total), "good")).join("") || `<div class="empty">No product sales in this view.</div>`; balances.innerHTML = customers().filter(c => c.balance > 0).map(c => row(c.customer, `${c.count} purchases`, money(c.balance), "warn")).join("") || `<div class="empty">No open balances.</div>`; }
+    function totalSales() { return state.sales.reduce((a,s) => a + total(s), 0); }
+    function totalProfit() { return state.sales.reduce((a,s) => a + profit(s), 0); }
+    function totalExpenses() { return state.expenses.reduce((a,e) => a + num(e.amount), 0); }
+    function download(name, text, type) { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; a.click(); URL.revokeObjectURL(a.href); }
+    function exportBackup() { download(`forever-fbo-backup-${today()}.json`, JSON.stringify(state, null, 2), "application/json"); }
+    function csv(rows) { return rows.map(r => r.map(c => `"${String(c ?? "").replaceAll('"','""')}"`).join(",")).join("\n"); }
+    function exportCsv() { const rows = [["Products"],["Name","Code","Category","Qty","Cost","Price","Expiry","Reorder"],...state.products.map(p=>[p.name,p.code,p.category,p.qty,p.cost,p.price,p.expiry,p.reorder]),[],["Sales"],["Date","Customer","Product","Type","Qty","Unit Price","Total","Profit","Paid","Balance","Payment"],...state.sales.map(s=>[s.date,s.customer,s.productName,s.type,s.qty,s.price,total(s),profit(s),s.paid,balance(s),s.payment]),[],["Expenses"],["Date","Category","Description","Amount","Payment"],...state.expenses.map(e=>[e.date,e.category,e.description,e.amount,e.payment])]; download(`forever-fbo-export-${today()}.csv`, csv(rows), "text/csv"); }
+    function importBackup(e) { const file = e.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = () => { try { const data = JSON.parse(reader.result); if (!Array.isArray(data.products) || !Array.isArray(data.sales) || !Array.isArray(data.expenses)) throw new Error(); if (confirm("Importing replaces the data currently saved in this browser.")) { state = data; state.tab ||= "dashboard"; save(); setTab(state.tab); toast("Imported"); } } catch { toast("Could not import backup"); } }; reader.readAsText(file); e.target.value = ""; }
+    window.editProduct = editProduct; window.deleteProduct = deleteProduct; window.editSale = editSale; window.deleteSale = deleteSale; window.editExpense = editExpense; window.deleteExpense = deleteExpense;
+    initTabs(); bind(); resetProduct(); resetSale(); resetExpense(); reportMonth.value = month(); setTab(state.tab || "dashboard");
+  </script>
+</body>
+</html>
