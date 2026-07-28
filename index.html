@@ -51,6 +51,54 @@
     const num = n => Number(n||0);
     const clean = s => String(s||"").trim().toLowerCase();
     const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    const element = name => {
+      const node = document.getElementById(name);
+      if(!node)throw new Error(`Missing app element: ${name}`);
+      return node
+    };
+    const {
+      activity,attention,backupBtn,balances,bulkProductBtn,bulkProductForm,bulkProductModal,bulkProductRows,
+      bulkProductSearch,bulkQuantityMode,calcCost,calcDiscount,calcDisplay,calcExtra,calcMargin,calcProfit,
+      calcProfitEach,calcQty,calcSell,calcTax,calcTotalDue,cartJumpBtn,cartPanel,catalogBtn,clearBulkProductBtn,
+      clearCustomer,clearExpense,clearPosCart,clearProduct,clearSale,closeBulkProductBtn,closeCartBtn,
+      closeProductDetailBtn,closeProductForm,closeReceiptBtn,cloudLoadBtn,cloudSaveBtn,copyReceiptBtn,csvBtn,
+      customerFollowUp,customerForm,customerFormTitle,customerId,customerName,customerNotes,customerPhone,
+      customerRows,customerSearch,deliveryFilter,deliveryRows,detailAddBtn,detailCartBtn,detailCategory,
+      detailCode,detailGallery,detailImageFile,detailMainPhoto,detailName,detailNotes,detailPrice,detailQty,
+      detailStock,downloadInventorySheetBtn,expenseAmount,expenseCategory,expenseDate,expenseDescription,
+      expenseFilter,expenseForm,expenseFormTitle,expenseId,expenseNotes,expensePayment,expenseRows,
+      expenseSearch,importBtn,importFile,importInventorySheetBtn,inventorySheetFile,metrics,mobileTab,monthlyRows,
+      newProductBtn,openCartBtn,posCartRows,posCategoryChips,posCheckoutBtn,posCustomer,posDate,posDelivery,
+      posNotes,posPager,posPaid,posPayment,posProductCards,posSearch,posTotal,posType,productCategory,
+      productCode,productCost,productDetailModal,productExpiry,productFilter,productForm,productFormPanel,
+      productFormTitle,productId,productImage,productImageFile,productImagePreview,productName,productNotes,
+      productPrice,productQty,productReorder,productRows,productSearch,productSource,receiptModal,receiptText,
+      removeProductImage,reorderRows,reportCards,reportMonth,reportScope,resetBtn,saleCustomer,saleDate,
+      saleDelivery,saleFilter,saleForm,saleFormTitle,saleId,saleNotes,salePaid,salePayment,salePrice,
+      saleProduct,saleProfitOverride,saleQty,saleRows,saleSearch,saleType,shareReceiptBtn,syncBadge,syncForm,
+      syncSecret,syncStatus,syncUrl,title,topProducts,unpaidRows
+    } = Object.fromEntries([
+      "activity attention backupBtn balances bulkProductBtn bulkProductForm bulkProductModal bulkProductRows",
+      "bulkProductSearch bulkQuantityMode calcCost calcDiscount calcDisplay calcExtra calcMargin calcProfit",
+      "calcProfitEach calcQty calcSell calcTax calcTotalDue cartJumpBtn cartPanel catalogBtn clearBulkProductBtn",
+      "clearCustomer clearExpense clearPosCart clearProduct clearSale closeBulkProductBtn closeCartBtn",
+      "closeProductDetailBtn closeProductForm closeReceiptBtn cloudLoadBtn cloudSaveBtn copyReceiptBtn csvBtn",
+      "customerFollowUp customerForm customerFormTitle customerId customerName customerNotes customerPhone",
+      "customerRows customerSearch deliveryFilter deliveryRows detailAddBtn detailCartBtn detailCategory",
+      "detailCode detailGallery detailImageFile detailMainPhoto detailName detailNotes detailPrice detailQty",
+      "detailStock downloadInventorySheetBtn expenseAmount expenseCategory expenseDate expenseDescription",
+      "expenseFilter expenseForm expenseFormTitle expenseId expenseNotes expensePayment expenseRows",
+      "expenseSearch importBtn importFile importInventorySheetBtn inventorySheetFile metrics mobileTab monthlyRows",
+      "newProductBtn openCartBtn posCartRows posCategoryChips posCheckoutBtn posCustomer posDate posDelivery",
+      "posNotes posPager posPaid posPayment posProductCards posSearch posTotal posType productCategory",
+      "productCode productCost productDetailModal productExpiry productFilter productForm productFormPanel",
+      "productFormTitle productId productImage productImageFile productImagePreview productName productNotes",
+      "productPrice productQty productReorder productRows productSearch productSource receiptModal receiptText",
+      "removeProductImage reorderRows reportCards reportMonth reportScope resetBtn saleCustomer saleDate",
+      "saleDelivery saleFilter saleForm saleFormTitle saleId saleNotes salePaid salePayment salePrice",
+      "saleProduct saleProfitOverride saleQty saleRows saleSearch saleType shareReceiptBtn syncBadge syncForm",
+      "syncSecret syncStatus syncUrl title topProducts unpaidRows"
+    ].join(" ").split(" ").map(name=>[name,element(name)]));
     const tabs = [["dashboard","Dashboard"],["inventory","Inventory"],["sales","Sales"],["pos","POS"],["reorder","Reorder"],["unpaid","Unpaid"],["deliveries","Deliveries"],["expenses","Expenses"],["customers","Customers"],["reports","Reports"],["calculator","Calculator"],["sync","Cloud Sync"]];
     let state = load();
     let syncSettings = loadSyncSettings();
