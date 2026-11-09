@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="app-version" content="2026-11-09-referral-page-122">
+  <meta name="app-version" content="2026-11-09-referral-customer-fix-123">
   <meta name="theme-color" content="#0b8b5b">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -978,7 +978,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
         if(action==="upload-sales-sheet")redesignOpenSalesSheet();
         if(action==="export")exportCsv();
         if(action==="add-expense"){resetExpense();redesignOpenPanel(expenseForm.closest(".form"))}
-        if(action==="add-customer"){resetCustomerForm();redesignOpenPanel(customerForm.closest(".form"))}
+        if(action==="add-customer"){if(state.tab==="referrals")setTab("customers");resetCustomerForm();redesignOpenPanel(customerForm.closest(".form"))}
       });
       context.addEventListener("keydown",e=>{if(e.key==="Enter"&&e.target.matches(".header-search")){setTab("pos");posSearch.value=e.target.value;posPage=0;renderPosProducts()}})
     }
@@ -1118,7 +1118,7 @@ lucide.createIcons({icons});\``);if(typeof document>"u")throw new Error("`create
       const profiles=state.customers.filter(customer=>redesignPhoneKey(customer.phone)).map(customer=>({customer,stats:redesignReferralStats(customer.phone)})),earned=profiles.reduce((sum,item)=>sum+item.stats.earned,0),used=profiles.reduce((sum,item)=>sum+item.stats.used,0),available=profiles.reduce((sum,item)=>sum+item.stats.available,0),automatic=profiles.filter(item=>item.customer.autoCreatedReferral).length;
       overview.innerHTML=[["users",profiles.length,"Customers with codes"],["user-plus",earned,"Referrals earned"],["ticket-check",used,"Rewards used"],["gift",available,"Rewards available"]].map(card=>`<div class="referral-summary"><span class="metric-icon-chip">${redesignIcon(card[0])}</span><div><b>${card[1]}</b><small>${card[2]}</small></div></div>`).join("");
       const query=clean(search?.value),mode=filter?.value||"all",rows=profiles.filter(item=>(!query||clean(`${item.customer.name} ${item.customer.phone}`).includes(query))&&(mode!=="available"||item.stats.available>0)&&(mode!=="automatic"||item.customer.autoCreatedReferral)).sort((a,b)=>b.stats.available-a.stats.available||a.customer.name.localeCompare(b.customer.name));
-      body.innerHTML=rows.map(item=>{const customer=item.customer,stats=item.stats,statusText=customer.autoCreatedReferral?"Needs name":stats.available?"Reward ready":"Up to date",statusTone=customer.autoCreatedReferral?"warn":stats.available?"good":"";return`<tr><td><div class="product-cell"><span class="customer-avatar" style="width:36px;height:36px;font-size:12px">${redesignCustomerInitials(customer.name)}</span><div><b>${esc(customer.name)}</b>${customer.autoCreatedReferral?`<span class="mini">Added automatically</span>`:""}</div></div></td><td><b>${esc(customer.phone)}</b><span class="mini">Phone referral code</span></td><td>${stats.earned}</td><td>${stats.used}</td><td><b>${stats.available}</b></td><td><span class="badge ${statusTone}">${statusText}</span></td><td class="actions"><button title="Copy phone code" onclick="redesignCopyReferralCode('${encodeURIComponent(customer.phone)}')">${redesignIcon("copy")}</button><button title="Edit customer" onclick="editCustomerProfile(decodeURIComponent('${encodeURIComponent(customer.name)}'));redesignOpenPanel(customerForm.closest('.form'))">${redesignIcon("pencil")}</button></td></tr>`}).join("")||`<tr><td colspan="7"><div class="empty">${automatic&&mode==="automatic"?"No automatic referral contacts match this search.":"No referral customers in this view."}</div></td></tr>`;
+      body.innerHTML=rows.map(item=>{const customer=item.customer,stats=item.stats,statusText=customer.autoCreatedReferral?"Needs name":stats.available?"Reward ready":"Up to date",statusTone=customer.autoCreatedReferral?"warn":stats.available?"good":"";return`<tr><td><div class="product-cell"><span class="customer-avatar" style="width:36px;height:36px;font-size:12px">${redesignCustomerInitials(customer.name)}</span><div><b>${esc(customer.name)}</b>${customer.autoCreatedReferral?`<span class="mini">Added automatically</span>`:""}</div></div></td><td><b>${esc(customer.phone)}</b><span class="mini">Phone referral code</span></td><td>${stats.earned}</td><td>${stats.used}</td><td><b>${stats.available}</b></td><td><span class="badge ${statusTone}">${statusText}</span></td><td class="actions"><button title="Copy phone code" onclick="redesignCopyReferralCode('${encodeURIComponent(customer.phone)}')">${redesignIcon("copy")}</button><button title="Edit customer" onclick="setTab('customers');editCustomerProfile(decodeURIComponent('${encodeURIComponent(customer.name)}'));redesignOpenPanel(customerForm.closest('.form'))">${redesignIcon("pencil")}</button></td></tr>`}).join("")||`<tr><td colspan="7"><div class="empty">${automatic&&mode==="automatic"?"No automatic referral contacts match this search.":"No referral customers in this view."}</div></td></tr>`;
       refreshIcons()
     }
     window.renderReferrals=renderReferrals;
